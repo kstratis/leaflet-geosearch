@@ -20,6 +20,10 @@ interface GeocodeError {
   stack: string;
 }
 
+export interface LocationArgument {
+  coordinates: google.maps.LatLng;
+}
+
 export type GoogleProviderOptions = LoaderOptions & ProviderOptions;
 
 export default class GoogleProvider extends AbstractProvider<
@@ -78,6 +82,31 @@ export default class GoogleProvider extends AbstractProvider<
 
     const response = await geocoder
       .geocode({ address: options.query }, (response) => ({
+        results: response,
+      }))
+      .catch((e: GeocodeError) => {
+        if (e.code !== 'ZERO_RESULTS') {
+          console.error(`${e.code}: ${e.message}`);
+        }
+        return { results: [] };
+      });
+
+    return this.parse({ data: response });
+  }
+
+  async reverseSearch(
+    options: LocationArgument,
+  ): Promise<SearchResult<google.maps.GeocoderResult>[]> {
+    const geocoder = this.geocoder || (await this.loader);
+
+    if (!geocoder) {
+      throw new Error(
+        'GoogleMaps GeoCoder is not loaded. Are you trying to run this server side?',
+      );
+    }
+
+    const response = await geocoder
+      .geocode({ location: options.coordinates }, (response) => ({
         results: response,
       }))
       .catch((e: GeocodeError) => {
